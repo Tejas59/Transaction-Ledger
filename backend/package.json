@@ -5,6 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "db:init": "tsx src/db/initDb.ts",
     "build": "rimraf dist && tsc",
     "start": "node dist/server.js",
     "lint": "tsc --noEmit"
@@ -35,4 +36,3 @@
     "typescript": "^5.7.2"
   }
 }
-
