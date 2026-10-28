@@ -131,3 +131,24 @@ Response `201`:
   "created_at": "2026-10-28T15:50:00.000Z"
 }
 ```
+
+
+---
+
+## Data Integrity & Concurrency Design
+
+* **Atomicity (ACID):** Adding transactions and updating balances run inside explicit PostgreSQL transactions (`BEGIN` / `COMMIT` / `ROLLBACK`). If any step fails, no changes persist.
+* **Concurrency & Race Conditions:** Uses pessimistic row locking (`SELECT ... FOR UPDATE`) to prevent double-spending under concurrent debit requests.
+* **Deadlock Prevention in Transfers:** During money transfers, row locks on the two accounts are always acquired in deterministic lexicographical order (`[src, dest].sort()`).
+* **Idempotency:** Enforced via a composite unique constraint `UNIQUE (account_id, reference_id)`. Duplicate submissions return `409 Conflict` without modifying balances.
+
+---
+
+## Assumptions
+
+1. **Monetary Precision:** All amounts and balances are stored as PostgreSQL `NUMERIC(15, 2)` to avoid floating-point rounding errors common in monetary calculations.
+2. **Single Currency:** All transactions operate in a uniform currency; multi-currency conversions are out of scope.
+3. **Client-Provided Reference ID:** In line with the assignment brief, `reference_id` acts as an idempotency key supplied by the client (UUID or alphanumeric string up to 255 chars). It is unique per account, but may be reused across different accounts.
+4. **Transaction Immutability:** Financial transaction records are strictly append-only audit logs. No `UPDATE` or `DELETE` endpoints exist.
+5. **No Overdrafts:** Account balance must never drop below zero, enforced both at the application service layer and via a database constraint (`CHECK (balance >= 0)`).
+6. **Authentication & Authorization:** The assessment focuses on the core ledger mechanics, atomicity, and concurrency control. User authentication/authorization is assumed to be handled at the API gateway layer or future middleware.
