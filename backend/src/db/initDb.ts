@@ -3,11 +3,9 @@ import { pool } from './index.js';
 export const initDb = async () => {
   const client = await pool.connect();
   try {
-    console.log('[Database] Checking and initializing database schema...');
-
+    console.log('[Database] Checking schema...');
     await client.query('BEGIN');
 
-    // 1. Create Accounts table
     await client.query(`
       CREATE TABLE IF NOT EXISTS accounts (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -18,8 +16,6 @@ export const initDb = async () => {
       );
     `);
 
-    // 2. Create Transactions table
-    // Note: Using VARCHAR for type with a CHECK constraint for simplicity and portability
     await client.query(`
       CREATE TABLE IF NOT EXISTS transactions (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -33,14 +29,13 @@ export const initDb = async () => {
       );
     `);
 
-    // 3. Create index for fast retrieval of latest transactions by account
     await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_transactions_account_created 
+      CREATE INDEX IF NOT EXISTS idx_transactions_account_created
       ON transactions(account_id, created_at DESC);
     `);
 
     await client.query('COMMIT');
-    console.log('[Database] Schema initialization complete. All tables and constraints are ready.');
+    console.log('[Database] Schema ready.');
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('[Database] Schema initialization failed:', error);
@@ -50,21 +45,11 @@ export const initDb = async () => {
   }
 };
 
-// If run directly via CLI: `node dist/db/initDb.js` or `tsx src/db/initDb.ts`
-const isMain = process.argv[1] && (
-  process.argv[1].endsWith('initDb.ts') || 
-  process.argv[1].endsWith('initDb.js')
-);
+// Allows running the schema setup on its own: `npm run db:init`
+const isMain = process.argv[1]?.endsWith('initDb.ts') || process.argv[1]?.endsWith('initDb.js');
 
 if (isMain) {
   initDb()
-    .then(() => {
-      console.log('[Database] Script finished successfully.');
-      process.exit(0);
-    })
-    .catch((err) => {
-      console.error('[Database] Script error:', err);
-      process.exit(1);
-    });
+    .then(() => process.exit(0))
+    .catch(() => process.exit(1));
 }
-
